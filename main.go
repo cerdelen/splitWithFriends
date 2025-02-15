@@ -218,17 +218,29 @@ func printUserStates() {
 }
 
 func buildSplitContactKeyboard(userID int64) tgbotapi.InlineKeyboardMarkup {
-    log.Println("BUILD SPLIT CONTACT KEYBOARD CALLED")
 	var keyboardRows [][]tgbotapi.InlineKeyboardButton
 
 	for contactID, contactName := range registeredUsers {
+        if len(keyboardRows) == 5 {
+            row := tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
+            )
+            keyboardRows = append(keyboardRows, row)
+            break
+        }
         if contactID != userID {
             row := tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData(contactName, strconv.FormatInt(contactID, 10)),
             )
+
             keyboardRows = append(keyboardRows, row)
         }
 	}
+
+    row := tgbotapi.NewInlineKeyboardRow(
+        tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
+    )
+    keyboardRows = append(keyboardRows, row)
 
     log.Printf("This is the Keyboard %+v", keyboardRows)
 
@@ -295,7 +307,14 @@ func callBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			registerUser(userID, userName)
 		case "deregister_self":
 			deregisterUser(userID)
+        case "finished_selecting_contacts":
+            userStates[userID] = UserState{State: "awaiting_amount_to_split"}
+            split := currentSplit[userID]
+            split.divisor = len(split.splitWith)
+			msg := tgbotapi.NewMessage(chatID, "What is the amount to be split?")
+			bot.Send(msg)
 		case "split_with_contacts":
+			userStates[userID] = UserState{State: "waiting_for_split_contacts"}
 			msg := tgbotapi.NewMessage(chatID, "Which Contacts do you want to split with?")
 			msg.ReplyMarkup = buildSplitContactKeyboard(userID)
 			bot.Send(msg)
