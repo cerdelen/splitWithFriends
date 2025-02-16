@@ -8,43 +8,13 @@ import (
 	"regexp"
 	"strconv"
 
+	"github.com/cerdelen/splitWithFriends/globals"
+	"github.com/cerdelen/splitWithFriends/keyboards"
+	"github.com/cerdelen/splitWithFriends/user"
+
+	// "github.com/cerdelen/splitWithFriends/user/userstates"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
-)
-
-var new_request_keyboard = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Add new Contact", "new_contact"),
-	),
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Allow Bot Messages", "register_self"),
-	),
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Remove Bot Messages", "deregister_self"),
-	),
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Start new Split", "new_Split"),
-	),
-)
-
-var new_split_keyboard = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("Split with Contacts", "split_with_contacts"),
-		tgbotapi.NewInlineKeyboardButtonData("Simple Split", "simple_split"),
-	),
-)
-
-var split_by_amt_keyboard = tgbotapi.NewInlineKeyboardMarkup(
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("2", "split_by_2"),
-		tgbotapi.NewInlineKeyboardButtonData("3", "split_by_3"),
-		tgbotapi.NewInlineKeyboardButtonData("4", "split_by_4"),
-	),
-	tgbotapi.NewInlineKeyboardRow(
-		tgbotapi.NewInlineKeyboardButtonData("5", "split_by_5"),
-		tgbotapi.NewInlineKeyboardButtonData("6", "split_by_6"),
-		tgbotapi.NewInlineKeyboardButtonData("more", "split_by_more_than_6"),
-	),
 )
 
 func isValidPositiveNumber(s string) bool {
@@ -53,6 +23,16 @@ func isValidPositiveNumber(s string) bool {
 }
 
 const MAXRETRIES = 3
+
+type userState int
+
+const (
+    Start                       userState = iota
+    awaiting_amount_to_split    userState = iota
+    awaiting_new_contact_name   userState = iota
+    waiting_for_split_contacts  userState = iota
+)
+
 
 type UserState struct {
 	State string
@@ -67,9 +47,6 @@ type Split struct {
 }
 
 var userStates = make(map[int64]UserState)
-var registeredUsers = make(map[int64]string)
-var splitByValue = make(map[int64]int)
-var retryCounter = make(map[int64]int)
 var currentSplit = make(map[int64]Split)
 
 func max(a, b int) int {
@@ -80,17 +57,17 @@ func max(a, b int) int {
 }
 
 func checkRetryLeft(userID int64) int {
-	if retriesLeft, exists := retryCounter[userID]; exists {
+	if retriesLeft, exists := globals.RetryCounter[userID]; exists {
 		retriesLeft -= 1
-		retryCounter[userID] = retriesLeft
+		globals.RetryCounter[userID] = retriesLeft
 		return retriesLeft
 	}
-	retryCounter[userID] = MAXRETRIES
+	globals.RetryCounter[userID] = MAXRETRIES
 	return MAXRETRIES
 }
 
 func removeRetries(userID int64) {
-	delete(retryCounter, userID)
+	delete(globals.RetryCounter, userID)
 }
 
 func isValidSplit(split Split) bool {
@@ -101,11 +78,10 @@ func isValidSplit(split Split) bool {
 }
 
 func getUserName(userID int64) (string, error) {
-	if name, exists := registeredUsers[userID]; exists {
+	if name, exists := globals.RegisteredUsers[userID]; exists {
 		return name, nil
 	}
 	return "", errors.New("userId is not registered")
-
 }
 
 func ssplit(bot *tgbotapi.BotAPI, update tgbotapi.Update, split Split) {
@@ -124,7 +100,7 @@ func ssplit(bot *tgbotapi.BotAPI, update tgbotapi.Update, split Split) {
 				// splitter_name, err := getUserName(splitter)
 				if isRegistered(splitter) {
 					amt := split.amt / float64(divisor)
-					responseText := fmt.Sprintf("%s splits a Bill of %.2f by %d People.\nThe Amount you have to pay is %.2f", split.authorName, split.amt, amt)
+					responseText := fmt.Sprintf("%s splits a Bill of %.2f by %d People.\nThe Amount you have to pay is %.2f", split.authorName, split.amt, split.divisor, amt)
 					msg := tgbotapi.NewMessage(splitter, responseText)
 					bot.Send(msg)
 				} else {
@@ -156,7 +132,7 @@ func split(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				responseText = fmt.Sprintf("The value entered is not a valid Amount!\nYou have %d retries left!", retries)
 			}
 			responseText = fmt.Sprintf("The value entered is not a valid Amount!\n You have %d retries left!", retries)
-		} else if divisor, ok := splitByValue[userID]; ok {
+		} else if divisor, ok := globals.SplitByValue[userID]; ok {
 			amt := num / float64(divisor)
 			responseText = fmt.Sprintf("Amount everyone has to Pay is: %.2f", amt)
 			delete(userStates, userID)
@@ -176,28 +152,28 @@ func split(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 
 func registerUser(userID int64, userName string) error {
 	log.Printf("registerUser %d, %s", userID, userName)
-	if _, exists := registeredUsers[userID]; exists {
+	if _, exists := globals.RegisteredUsers[userID]; exists {
 		return errors.New("userId is already registered")
 	}
 
-	for _, v := range registeredUsers {
+	for _, v := range globals.RegisteredUsers {
 		if v == userName {
 			return errors.New("userName is already Taken")
 		}
 	}
 
-	registeredUsers[userID] = userName
+	globals.RegisteredUsers[userID] = userName
 
 	return nil
 }
 func deregisterUser(userID int64) error {
 	log.Printf("deregisterUser %d", userID)
-	delete(registeredUsers, userID)
+	delete(globals.RegisteredUsers, userID)
 	return nil
 }
 
 func checkUserNameExists(userName string) bool {
-	for _, v := range registeredUsers {
+	for _, v := range globals.RegisteredUsers {
 		if v == userName {
 			return true
 		}
@@ -206,7 +182,7 @@ func checkUserNameExists(userName string) bool {
 }
 
 func isRegistered(userID int64) bool {
-	_, exists := registeredUsers[userID]
+	_, exists := globals.RegisteredUsers[userID]
 	return exists
 }
 
@@ -217,35 +193,6 @@ func printUserStates() {
 	}
 }
 
-func buildSplitContactKeyboard(userID int64) tgbotapi.InlineKeyboardMarkup {
-	var keyboardRows [][]tgbotapi.InlineKeyboardButton
-
-	for contactID, contactName := range registeredUsers {
-        if len(keyboardRows) == 5 {
-            row := tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
-            )
-            keyboardRows = append(keyboardRows, row)
-            break
-        }
-        if contactID != userID {
-            row := tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData(contactName, strconv.FormatInt(contactID, 10)),
-            )
-
-            keyboardRows = append(keyboardRows, row)
-        }
-	}
-
-    row := tgbotapi.NewInlineKeyboardRow(
-        tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
-    )
-    keyboardRows = append(keyboardRows, row)
-
-    log.Printf("This is the Keyboard %+v", keyboardRows)
-
-	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...)
-}
 
 func callBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	log.Printf("Received callback query: %+v", update.CallbackQuery.Message.Chat.ID)
@@ -283,7 +230,7 @@ func callBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			if split_by > 0 {
 				responseText = "What is the amount to be split?"
 				userStates[userID] = UserState{State: "awaiting_amount_to_split"}
-				splitByValue[userID] = split_by
+				globals.SplitByValue[userID] = split_by
 			} else {
 				responseText = "Please enter by how many you want to Split instead?"
 				// userStates[userID] = UserState{State: "awaiting_amount_to_split"}
@@ -291,7 +238,7 @@ func callBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			msg := tgbotapi.NewMessage(chatID, responseText)
 			bot.Send(msg)
 		default:
-			log.Fatal("user was in unknown userState\nUser ID: %d, State: %s\n", userID, state.State)
+			log.Fatalf("user was in unknown userState\nUser ID: %d, State: %s\n", userID, state.State)
 		}
 	} else {
 		var responseText string
@@ -311,17 +258,29 @@ func callBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
             userStates[userID] = UserState{State: "awaiting_amount_to_split"}
             split := currentSplit[userID]
             split.divisor = len(split.splitWith)
+            currentSplit[userID] = split
 			msg := tgbotapi.NewMessage(chatID, "What is the amount to be split?")
 			bot.Send(msg)
 		case "split_with_contacts":
 			userStates[userID] = UserState{State: "waiting_for_split_contacts"}
 			msg := tgbotapi.NewMessage(chatID, "Which Contacts do you want to split with?")
-			msg.ReplyMarkup = buildSplitContactKeyboard(userID)
-			bot.Send(msg)
+            keyboard, err := keyboards.BuildSplitContactKeyboard(userID)
+            if err != nil {
+                if split, exists := currentSplit[userID]; exists {
+                    if len(split.splitWith) == 0 {
+                        // TODO No Contacts but also none contacts put so far, ERROR!
+                    } else {
+                        // TODO No more contacts but it should be done alrady
+                    }
+                }
+            } else {
+                msg.ReplyMarkup = keyboard
+                bot.Send(msg)
+            }
 		case "simple_split":
 			userStates[userID] = UserState{State: "waiting_for_split_by_amount"}
 			msg := tgbotapi.NewMessage(chatID, "By how many people do you want to split the Bill?")
-			msg.ReplyMarkup = split_by_amt_keyboard
+			msg.ReplyMarkup = keyboards.Split_by_amt_keyboard
 			bot.Send(msg)
 		case "new_Split":
 			currentSplit[userID] = Split{
@@ -332,7 +291,7 @@ func callBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 				splitWith:  []int64{},
 			}
 			msg := tgbotapi.NewMessage(chatID, "Click a button:")
-			msg.ReplyMarkup = new_split_keyboard
+			msg.ReplyMarkup = keyboards.New_split_keyboard
 			bot.Send(msg)
 		default:
 			responseText = "Unknown option."
@@ -347,6 +306,12 @@ func callBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		"You selected: "+callbackData,
 	)
 	bot.Send(editMsg)
+}
+
+func returnHelpMessage (bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+    userID := update.Message.Chat.ID
+    msg := tgbotapi.NewMessage(userID, "Start the Bot by sending \"/start\" and follow the instructions!")
+    bot.Send(msg)
 }
 
 func messages(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
@@ -377,7 +342,7 @@ func messages(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 			split(bot, update)
 		default:
 			// log.Fatal("user was in an unknown userState: %s")
-			log.Fatal("user was in unknown userState\nUser ID: %d, State: %s\n", userID, state.State)
+			log.Fatalf("user was in unknown userState\nUser ID: %d, State: %s\n", userID, state.State)
 		}
 
 	} else {
@@ -386,10 +351,6 @@ func messages(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		// case "/help":
 		//     msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Possibl")
 		//     bot.Send(msg)
-		case "/new":
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click a button:")
-			msg.ReplyMarkup = new_request_keyboard
-			bot.Send(msg)
 		case "/register":
 			userStates[userID] = UserState{State: "awaiting_username"}
 
@@ -413,7 +374,7 @@ func main() {
 	if botToken == "" {
 		log.Fatal("TELEGRAM_BOT_TOKEN not set")
 	} else {
-		log.Printf(botToken)
+		log.Println(botToken)
 	}
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
@@ -444,12 +405,25 @@ func main() {
 
 	for update := range updates {
 		log.Printf("Received update: %+v", update)
-		printUserStates()
-		if update.Message != nil { // Handle regular messages
-			messages(bot, update)
-		}
-		if update.CallbackQuery != nil { // Handle inline button clicks
-			callBackQueries(bot, update)
+		// printUserStates()
+        if update.CallbackQuery != nil { // Handle inline button clicks
+            callBackQueries(bot, update)
+        } else if update.Message != nil { // Handle regular messages
+            userID := update.Message.Chat.ID
+            user.AddIfNewUser(userID, update.Message.Chat.UserName, globals.Users)
+            if _, exists := userStates[userID]; !exists {
+                switch update.Message.Text {
+                    case "/start":
+                        userStates[userID] = UserState{State: "start"}
+                        msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click a button:")
+                        msg.ReplyMarkup = keyboards.StartKeyboard
+                        bot.Send(msg)
+                    default:
+                        returnHelpMessage(bot, update)
+                }
+            } else {
+                messages(bot, update)
+            }
 		}
 	}
 }
