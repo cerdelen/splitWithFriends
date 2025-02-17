@@ -1,10 +1,11 @@
 package globals
 
-import "github.com/cerdelen/splitWithFriends/user"
+// import(
+//     "github.com/cerdelen/splitWithFriends/user"
+// )
 
 
-var RegisteredUsers = make(map[int64]string)
+var RegisteredUsers = make(map[int64]struct{})
 var SplitByValue = make(map[int64]int)
 var RetryCounter = make(map[int64]int)
-var Users = make(map[int64]*user.User)
 

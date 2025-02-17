@@ -3,11 +3,15 @@ package userstates
 type UserState int
 
 const (
-    None                        UserState = iota
-    Start                       UserState = iota
-    awaiting_amount_to_split    UserState = iota
-    awaiting_new_contact_name   UserState = iota
-    waiting_for_split_contacts  UserState = iota
+    None                            UserState = iota
+    Start                           UserState = iota
+    Configuration                   UserState = iota
+    RequestFromSingleContact        UserState = iota
+
+    Awaiting_amount_to_split        UserState = iota
+    Awaiting_new_contact_name       UserState = iota
+    Awaiting_for_split_contacts     UserState = iota
+    Awaiting_for_split_by_amount    UserState = iota
 )
 
 

@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/cerdelen/splitWithFriends/globals"
+	"github.com/cerdelen/splitWithFriends/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -44,7 +45,7 @@ var Split_by_amt_keyboard = tgbotapi.NewInlineKeyboardMarkup(
 func BuildSplitContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
 	var keyboardRows [][]tgbotapi.InlineKeyboardButton
 
-	for contactID, contactName := range globals.RegisteredUsers {
+	for contactID := range globals.RegisteredUsers {
         if len(keyboardRows) == 5 {
             row := tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
@@ -53,8 +54,11 @@ func BuildSplitContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, err
             break
         }
         if contactID != userID {
+            userName, err := user.GetUserName(contactID)
+            if err != nil { log.Fatalf("Couldnt retrieve Username for %d\nMap of Users %+v", contactID, user.Users)}
+
             row := tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData(contactName, strconv.FormatInt(contactID, 10)),
+                tgbotapi.NewInlineKeyboardButtonData(userName, strconv.FormatInt(contactID, 10)),
             )
 
             keyboardRows = append(keyboardRows, row)
@@ -75,3 +79,4 @@ func BuildSplitContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, err
 
 	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
 }
+
