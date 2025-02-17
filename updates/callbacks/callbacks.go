@@ -62,21 +62,40 @@ func HandleCallBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
         case userstates.None:
         case userstates.Start:
             switch callbackData {
-                case "simple_split":
-                    user.Users[userID].State = userstates.Awaiting_for_split_by_amount
+                case "configuration":
+                    user.Users[userID].State = userstates.Configuration
                     // userStates[userID] = UserState{State: "waiting_for_split_by_amount"}
-                    msg := tgbotapi.NewMessage(chatID, "By how many people do you want to split the Bill?")
-                    msg.ReplyMarkup = keyboards.Split_by_amt_keyboard
+                    msg := tgbotapi.NewMessage(chatID, "Configuration")
+                    msg.ReplyMarkup = keyboards.ConfigurationKeyboard
                     bot.Send(msg)
+                case "new_split":
+                case "direct_request":
+                // case "simple_split":
+                //     user.Users[userID].State = userstates.Awaiting_for_split_by_amount
+                //     // userStates[userID] = UserState{State: "waiting_for_split_by_amount"}
+                //     msg := tgbotapi.NewMessage(chatID, "By how many people do you want to split the Bill?")
+                //     msg.ReplyMarkup = keyboards.Split_by_amt_keyboard
+                //     bot.Send(msg)
             }
         case userstates.Configuration:
             switch callbackData {
                 case "register_self":
-                    // userName := update.CallbackQuery.From.UserName
                     user.RegisterToBotMessages(userID)
                 case "deregister_self":
                     user.DeregisterToBotMessages(userID)
-
+                case "add_contact":
+                    log.Println("LOOOOOOOOL")
+                    user.Users[userID].State = userstates.AddingContact
+                    msg := tgbotapi.NewMessage(chatID, "What User do you want to add as a Contact?")
+            msg.ReplyMarkup, err = keyboards.BuildAddingContactKeyboard(userID); err != nil {
+                    }
+                    bot.Send(msg)
+                case "remove_contact":
+                    user.Users[userID].State = userstates.RemovingContact
+                    msg := tgbotapi.NewMessage(chatID, "What User do you want to remove as a Contact?")
+                    // msg.ReplyMarkup = keyboards.ConfigurationKeyboard
+                    msg.ReplyMarkup = keyboards.BuildRemovingContactKeyboard(userID)
+                    bot.Send(msg)
             }
         case userstates.RequestFromSingleContact:
 

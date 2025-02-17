@@ -52,10 +52,6 @@ func removeRetries(userID int64) {
 	delete(globals.RetryCounter, userID)
 }
 
-
-
-
-
 // func checkUserNameExists(userName string) bool {
 // 	for _, v := range globals.RegisteredUsers {
 // 		if v == userName {
@@ -64,10 +60,6 @@ func removeRetries(userID int64) {
 // 	}
 // 	return false
 // }
-
-
-
-
 
 func returnHelpMessage (bot *tgbotapi.BotAPI, update tgbotapi.Update) {
     userID := update.Message.Chat.ID

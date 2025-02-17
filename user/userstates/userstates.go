@@ -6,6 +6,13 @@ const (
     None                            UserState = iota
     Start                           UserState = iota
     Configuration                   UserState = iota
+
+    AddingContact                   UserState = iota
+    RemovingContact                 UserState = iota
+
+
+
+
     RequestFromSingleContact        UserState = iota
 
     Awaiting_amount_to_split        UserState = iota

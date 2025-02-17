@@ -11,16 +11,30 @@ import (
 
 
 type User struct {
-    ID int64
-    Name string
-	State userstates.UserState
+    ID          int64
+    Name        string
+	State       userstates.UserState
+    Contacts    map[int64]struct{}
 }
 
 var Users = make(map[int64]*User)
 
+func (u User)AddContact(other int64) {
+    u.Contacts[other] = struct{}{}
+}
+
+func (u User)RemoveContact(other int64) {
+    delete(u.Contacts, other)
+}
+
+func (u User) HasContact(other int64) bool {
+    _, exists := u.Contacts[other]
+    return exists
+}
+
 func AddIfNewUser(userID int64, name string) {
     if _, ok := Users[userID]; !ok {
-        Users[userID] = &User{ID: userID, Name: name, State: userstates.None}
+        Users[userID] = &User{ID: userID, Name: name, State: userstates.None, Contacts: make(map[int64]struct{})}
     }
 }
 
