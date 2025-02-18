@@ -19,8 +19,12 @@ type User struct {
 
 var Users = make(map[int64]*User)
 
-func (u User)AddContact(other int64) {
-    u.Contacts[other] = struct{}{}
+func (u User)AddContact(other int64) error {
+    if IsRegistered(other) {
+        u.Contacts[other] = struct{}{}
+        return nil
+    }
+    return errors.New("User is not Registered to become a Contact!")
 }
 
 func (u User)RemoveContact(other int64) {

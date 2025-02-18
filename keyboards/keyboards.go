@@ -118,15 +118,17 @@ func BuildAddingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, e
         }
     }
 
-    row := tgbotapi.NewInlineKeyboardRow(
-        tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
-    )
-
-    keyboardRows = append(keyboardRows, row)
-
-    // if len(keyboardRows) == 0 {
-    //     return tgbotapi.InlineKeyboardMarkup{}, errors.New("")
-    // }
+    if len(keyboardRows) == 0 {
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("No Users addable!", "finished_selecting_contacts"),
+        )
+        keyboardRows = append(keyboardRows, row)
+    } else {
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
+        )
+        keyboardRows = append(keyboardRows, row)
+    }
 
 	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
 }

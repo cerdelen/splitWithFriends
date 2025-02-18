@@ -28,15 +28,12 @@ type UserState struct {
 	State string
 }
 
-
-// var userStates = make(map[int64]UserState)
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
+// func max(a, b int) int {
+// 	if a > b {
+// 		return a
+// 	}
+// 	return b
+// }
 
 func checkRetryLeft(userID int64) int {
 	if retriesLeft, exists := globals.RetryCounter[userID]; exists {
@@ -66,7 +63,6 @@ func returnHelpMessage (bot *tgbotapi.BotAPI, update tgbotapi.Update) {
     msg := tgbotapi.NewMessage(userID, "Start the Bot by sending \"/start\" and follow the instructions!")
     bot.Send(msg)
 }
-
 
 func main() {
 	err := godotenv.Load()
@@ -118,14 +114,14 @@ func main() {
             switch user.Users[userID].State {
                 case userstates.None:
                     switch update.Message.Text {
-                    case "/start":
-                        user.Users[userID].State = userstates.Start
-                        // userStates[userID] = UserState{State: "start"}
-                        msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click a button:")
-                        msg.ReplyMarkup = keyboards.StartKeyboard
-                        bot.Send(msg)
-                    default:
-                        returnHelpMessage(bot, update)
+                        case "/start":
+                            user.Users[userID].State = userstates.Start
+                            // userStates[userID] = UserState{State: "start"}
+                            msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click a button:")
+                            msg.ReplyMarkup = keyboards.StartKeyboard
+                            bot.Send(msg)
+                        default:
+                            returnHelpMessage(bot, update)
                     }
                 default:
                     messages.HandleMessage(bot, update)
@@ -133,3 +129,4 @@ func main() {
 		}
 	}
 }
+
