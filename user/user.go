@@ -36,6 +36,25 @@ func (u User) HasContact(other int64) bool {
     return exists
 }
 
+func GetId(userName string) (int64, error) {
+	for _, u := range Users {
+		if u.Name == userName {
+			return u.ID, nil
+		}
+	}
+	return -1, errors.New("No User with that User Name")
+}
+
+func NameIsRegistered(userName string) bool {
+    if id, err := GetId(userName); err == nil {
+        if _, exists := globals.RegisteredUsers[id]; exists {
+            return true
+        }
+    }
+    return false
+}
+
+
 func AddIfNewUser(userID int64, name string) {
     if _, ok := Users[userID]; !ok {
         Users[userID] = &User{ID: userID, Name: name, State: userstates.None, Contacts: make(map[int64]struct{})}

@@ -135,5 +135,35 @@ func BuildAddingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, e
 
 func BuildRemovingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
 	var keyboardRows [][]tgbotapi.InlineKeyboardButton
+    for contact := range user.Users[userID].Contacts {
+        if len(keyboardRows) == 5 {
+            row := tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
+            )
+            keyboardRows = append(keyboardRows, row)
+            break
+        }
+        if name, err := user.GetUserName(contact); err != nil {
+            row := tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData(name, strconv.FormatInt(contact, 10)),
+            )
+            keyboardRows = append(keyboardRows, row)
+        } else {
+            log.Panicf("GetUserName failed on an Added Contact but Registered User\nRegistered User: %d", contact)
+        }
+    }
+
+    if len(keyboardRows) == 0 {
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("No Contacts!", "finished_selecting_contacts"),
+        )
+        keyboardRows = append(keyboardRows, row)
+    } else {
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
+        )
+        keyboardRows = append(keyboardRows, row)
+    }
+
 	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
 }

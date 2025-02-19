@@ -1,13 +1,8 @@
 package main
 
 import (
-	// "errors"
-	// "fmt"
 	"log"
 	"os"
-
-	// "regexp"
-	// "strconv"
 
 	"github.com/cerdelen/splitWithFriends/globals"
 	"github.com/cerdelen/splitWithFriends/keyboards"
@@ -16,7 +11,6 @@ import (
 	"github.com/cerdelen/splitWithFriends/user"
 	"github.com/cerdelen/splitWithFriends/user/userstates"
 
-	// "github.com/cerdelen/splitWithFriends/user/userstates"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 )
@@ -27,13 +21,6 @@ const MAXRETRIES = 3
 type UserState struct {
 	State string
 }
-
-// func max(a, b int) int {
-// 	if a > b {
-// 		return a
-// 	}
-// 	return b
-// }
 
 func checkRetryLeft(userID int64) int {
 	if retriesLeft, exists := globals.RetryCounter[userID]; exists {
@@ -67,34 +54,30 @@ func returnHelpMessage (bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 func main() {
 	err := godotenv.Load()
 
-	if err != nil {
-		log.Fatal("Error loading .env file")
-	}
+	if err != nil { log.Fatal("Error loading .env file") }
 
 	botToken := os.Getenv("TELEGRAM_BOT_TOKEN")
 
 	if botToken == "" {
 		log.Fatal("TELEGRAM_BOT_TOKEN not set")
-	} else {
-		log.Println(botToken)
 	}
 
 	bot, err := tgbotapi.NewBotAPI(botToken)
+
 	if err != nil {
 		log.Panic(err)
 	}
 
 	bot.Debug = true
 
-	botInfo, err := bot.GetMe()
-	if err != nil {
-		log.Panic(err)
-	}
-
-	log.Printf("Bot Username: %s", botInfo.UserName)
-	log.Printf("Can Join Groups: %v", botInfo.CanJoinGroups)
-	log.Printf("Can Read Messages: %v", botInfo.CanReadAllGroupMessages)
-	log.Printf("Supports Inline Queries: %v", botInfo.SupportsInlineQueries)
+	// botInfo, err := bot.GetMe()
+	// if err != nil {
+	// 	log.Panic(err)
+	// }
+	// log.Printf("Bot Username: %s", botInfo.UserName)
+	// log.Printf("Can Join Groups: %v", botInfo.CanJoinGroups)
+	// log.Printf("Can Read Messages: %v", botInfo.CanReadAllGroupMessages)
+	// log.Printf("Supports Inline Queries: %v", botInfo.SupportsInlineQueries)
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -116,7 +99,6 @@ func main() {
                     switch update.Message.Text {
                         case "/start":
                             user.Users[userID].State = userstates.Start
-                            // userStates[userID] = UserState{State: "start"}
                             msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click a button:")
                             msg.ReplyMarkup = keyboards.StartKeyboard
                             bot.Send(msg)

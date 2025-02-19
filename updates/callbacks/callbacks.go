@@ -13,7 +13,7 @@ import (
 )
 
 
-func parseSplitByAmount(bot *tgbotapi.BotAPI , update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
+func parseSplitByAmount(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
         // chatID := update.CallbackQuery.Message.Chat.ID
         callbackData := update.CallbackQuery.Data
         userID := update.CallbackQuery.Message.Chat.ID
@@ -47,7 +47,7 @@ func parseSplitByAmount(bot *tgbotapi.BotAPI , update tgbotapi.Update) (string, 
         return responseText, tgbotapi.NewInlineKeyboardMarkup(), nil
 }
 
-func parseStartCallBack(bot *tgbotapi.BotAPI, update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
+func parseStartCallBack(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
 	// chatID := update.CallbackQuery.Message.Chat.ID
 	callbackData := update.CallbackQuery.Data
 	userID := update.CallbackQuery.Message.Chat.ID
@@ -73,7 +73,7 @@ func parseStartCallBack(bot *tgbotapi.BotAPI, update tgbotapi.Update) (string, t
         return responseText, keyboard, nil
 }
 
-func parseConfigurationCallBack(bot *tgbotapi.BotAPI, update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
+func parseConfigurationCallBack(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
 	// chatID := update.CallbackQuery.Message.Chat.ID
 	callbackData := update.CallbackQuery.Data
 	userID := update.CallbackQuery.Message.Chat.ID
@@ -92,29 +92,59 @@ func parseConfigurationCallBack(bot *tgbotapi.BotAPI, update tgbotapi.Update) (s
                 user.Users[userID].State = userstates.None
             }
         case "add_contact":
-            log.Println("LOOOOOOOOL")
             user.Users[userID].State = userstates.AddingContact
             // var msg tgbotapi.MessageConfig
             if keyboard, err = keyboards.BuildAddingContactKeyboard(userID); err != nil {
                 log.Println(err.Error())
-                responseText = "Error Parsing Contact Keyboard"
+                responseText = "Error Parsing Adding Contact Keyboard"
             } else {
                 responseText = "What User do you want to add as a Contact?"
                 // msg.ReplyMarkup = keyboard
                 // log.Printf("%+v", keyboard)
             }
-            // bot.Send(msg)
         case "remove_contact":
-            // user.Users[userID].State = userstates.RemovingContact
-            // msg := tgbotapi.NewMessage(chatID, "What User do you want to remove as a Contact?")
-            // // msg.ReplyMarkup = keyboards.BuildRemovingContactKeyboard(userID)
-            // bot.Send(msg)
+            user.Users[userID].State = userstates.RemovingContact
+            // var msg tgbotapi.MessageConfig
+            if keyboard, err = keyboards.BuildRemovingContactKeyboard(userID); err != nil {
+                log.Println(err.Error())
+                responseText = "Error Parsing Removing Contact Keyboard"
+            } else {
+                responseText = "What User do you want to remove as a Contact?"
+                // msg.ReplyMarkup = keyboard
+                // log.Printf("%+v", keyboard)
+            }
     }
     return responseText, keyboard, nil
 }
 
-func parseAddingContact(bot *tgbotapi.BotAPI, update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
-	// chatID := update.CallbackQuery.Message.Chat.ID
+func parseRemoveContact(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
+	callbackData := update.CallbackQuery.Data
+	userID := update.CallbackQuery.Message.Chat.ID
+
+    var responseText string
+    var keyboard tgbotapi.InlineKeyboardMarkup
+    var err error
+    switch callbackData {
+        case "load_more_contacts":
+            // user.Users[userID].State = userstates.AddingContact
+        case "finished_selecting_contacts":
+            user.Users[userID].State = userstates.None
+        default:
+            var otherId int
+            if otherId, err = strconv.Atoi(callbackData); err == nil {
+                user.Users[userID].RemoveContact(int64(otherId))
+                if keyboard, err = keyboards.BuildRemovingContactKeyboard(userID); err != nil {
+                    log.Println(err.Error())
+                    responseText = "Error Parsing Contact Keyboard"
+                } else {
+                    responseText = "What User do you want to add as a Contact?"
+                }
+            }
+    }
+    return responseText, keyboard, nil
+}
+
+func parseAddingContact(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
 	callbackData := update.CallbackQuery.Data
 	userID := update.CallbackQuery.Message.Chat.ID
 
@@ -146,7 +176,6 @@ func parseAddingContact(bot *tgbotapi.BotAPI, update tgbotapi.Update) (string, t
 
 func HandleCallBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 	log.Printf("Received callback query: %+v", update.CallbackQuery.Message.Chat.ID)
-	// log.Println("Callback got registered", err)
 	callback := tgbotapi.NewCallback(update.CallbackQuery.ID, "")
 	if _, err := bot.Request(callback); err != nil {
 		log.Println("Error acknowledging callback:", err)
@@ -161,17 +190,19 @@ func HandleCallBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
     switch user.Users[userID].State {
         case userstates.Awaiting_amount_to_split:
         case userstates.Awaiting_for_split_by_amount:
-            msg, keyboard, err = parseSplitByAmount(bot, update)
+            msg, keyboard, err = parseSplitByAmount(update)
         case userstates.Awaiting_for_split_contacts:
         case userstates.Awaiting_new_contact_name:
         case userstates.None:
         case userstates.AddingContact:
-            msg, keyboard, err = parseAddingContact(bot, update)
+            msg, keyboard, err = parseAddingContact(update)
         case userstates.Start:
-            msg, keyboard, err = parseStartCallBack(bot, update)
+            msg, keyboard, err = parseStartCallBack(update)
         case userstates.Configuration:
-            msg, keyboard, err = parseConfigurationCallBack(bot, update)
+            msg, keyboard, err = parseConfigurationCallBack(update)
         case userstates.RequestFromSingleContact:
+        case userstates.RemovingContact:
+            msg, keyboard, err = parseRemoveContact(update)
 
         default:
             panic("unexpected userstates.UserState")
