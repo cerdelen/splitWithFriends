@@ -6,7 +6,9 @@ import (
 	"strconv"
 
 	// "github.com/cerdelen/splitWithFriends/globals"
+	"github.com/cerdelen/splitWithFriends/split"
 	"github.com/cerdelen/splitWithFriends/user"
+	"github.com/cerdelen/splitWithFriends/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
@@ -22,7 +24,7 @@ var StartKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	),
 )
 
-var New_split_keyboard = tgbotapi.NewInlineKeyboardMarkup(
+var NewSplitKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Split with Contacts", "split_with_contacts"),
 		tgbotapi.NewInlineKeyboardButtonData("Simple Split", "simple_split"),
@@ -95,65 +97,56 @@ func BuildSplitContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, err
 	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
 }
 
+const ContactKeyboardContactFields= 6
+
+func BuildAddSplitterKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
+    contacts := user.Users[userID].Contacts
+    var filteredContacts []*user.User
+    for _, contact := range contacts {
+        if !split.CurrentSplits[userID].HasSplitter(contact) {
+            filteredContacts = append(filteredContacts, contact)
+        }
+    }
+    if len(filteredContacts) > ContactKeyboardContactFields {
+        user.Users[userID].ContactIndexing = utils.Min(user.Users[userID].ContactIndexing, len(filteredContacts) - ContactKeyboardContactFields)
+    }
+
+    return BuildingContactKeyboard(filteredContacts, user.Users[userID].ContactIndexing)
+}
+
 func BuildAddingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
     possibleContacts := user.Users[userID].GetPossibleContacts()
+    if len(possibleContacts) > ContactKeyboardContactFields {
+        user.Users[userID].ContactIndexing = utils.Min(user.Users[userID].ContactIndexing, len(possibleContacts) - ContactKeyboardContactFields)
+    }
+
     return BuildingContactKeyboard(possibleContacts, user.Users[userID].ContactIndexing)
 }
 
 func BuildRemovingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
-	var keyboardRows [][]tgbotapi.InlineKeyboardButton
-    for contact := range user.Users[userID].Contacts {
-        if len(keyboardRows) == 5 {
-            row := tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
-            )
-            keyboardRows = append(keyboardRows, row)
-            break
-        }
-        if name, err := user.GetUserName(contact); err != nil {
-            log.Panicf("GetUserName failed on an Added Contact but Registered User\nRegistered User: %d", contact)
-
-        } else {
-            row := tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData(name, strconv.FormatInt(contact, 10)),
-                )
-            keyboardRows = append(keyboardRows, row)
-        }
+    contacts := user.Users[userID].Contacts
+    if len(contacts) > ContactKeyboardContactFields {
+        user.Users[userID].ContactIndexing = utils.Min(user.Users[userID].ContactIndexing, len(contacts) - ContactKeyboardContactFields)
     }
 
-    if len(keyboardRows) == 0 {
-        row := tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("No Contacts!", "finished_selecting_contacts"),
-        )
-        keyboardRows = append(keyboardRows, row)
-    } else {
-        row := tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
-        )
-        keyboardRows = append(keyboardRows, row)
-    }
-
-	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
+    return BuildingContactKeyboard(contacts, user.Users[userID].ContactIndexing)
 }
 
 func BuildingContactKeyboard(contacts []*user.User, skip int) (tgbotapi.InlineKeyboardMarkup, error) {
 	var keyboardRows [][]tgbotapi.InlineKeyboardButton
     log.Printf("BuildingCotnactKeyboard: %d", len(contacts))
 
-    i := 0
     if skip > 0 {
         row := tgbotapi.NewInlineKeyboardRow(
             tgbotapi.NewInlineKeyboardButtonData("Load previous Contacts", "load_prev_contacts"),
         )
         keyboardRows = append(keyboardRows, row)
     }
-    for _, contact := range contacts {
+    for i, contact := range contacts {
         if i < skip {
-            i++
             continue
         }
-        if len(keyboardRows) == 5 && len(contacts) > 5 {
-            log.Println("HALLOOOOOOOO")
+        if len(keyboardRows) == ContactKeyboardContactFields && (len(contacts) - skip) > ContactKeyboardContactFields {
             row := tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
             )

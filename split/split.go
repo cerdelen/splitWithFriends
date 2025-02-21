@@ -1,9 +1,12 @@
 package split
 
 import (
-	"fmt"
-	"log"
+	// "fmt"
+	// "log"
+	"errors"
+	// "log"
 	"regexp"
+
 	// "strconv"
 
 	// "github.com/cerdelen/splitWithFriends/globals"
@@ -13,21 +16,25 @@ import (
 )
 
 type Split struct {
-	author          int64
-	authorName      string
+	author          *user.User
+    splitWith       []*user.User
 	divisor         int
 	amt             float64
-	splitWith       []int64
-    simpleSplit     bool
+    // authorName      string
+    // simpleSplit     bool
 }
 
-var CurrentSplits = make(map[int64]Split)
+var CurrentSplits = make(map[int64]*Split)
 
-func isValidSplit(split Split) bool {
-	if split.divisor > 0 && split.amt > 0 {
+func (s *Split)isValidSplit() bool {
+	if s.divisor > 0 && s.amt > 0 {
 		return true
 	}
 	return false
+}
+
+func Init(author *user.User) *Split {
+    return &Split{author: author}
 }
 
 func isValidPositiveNumber(s string) bool {
@@ -35,33 +42,50 @@ func isValidPositiveNumber(s string) bool {
 	return re.MatchString(s)
 }
 
-func (s Split) HandleSplit(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
-	userID := update.Message.Chat.ID
-	if isValidSplit(s) {
-		// divisor := max(split.divisor, len(split.splitWith))
-        if s.simpleSplit {
-			amt := s.amt / float64(s.divisor)
-			responseText := fmt.Sprintf("Amount everyone has to Pay is: %.2f", amt)
-			msg := tgbotapi.NewMessage(userID, responseText)
-			bot.Send(msg)
-		} else {
-			// userName := getUserName(split.author)
+func (s *Split)AddSplitter(other *user.User) error {
+    if s.author.HasContact(other.ID) {
+        s.splitWith = append(s.splitWith, other)
+        return nil
+    }
+    return errors.New("User you tried to add as a Splitter is not a Contact!")
+}
 
-			for _, splitter := range s.splitWith {
-				// splitter_name, err := getUserName(splitter)
-				if user.IsRegistered(splitter) {
-					amt := s.amt / float64(len(s.splitWith))
-					responseText := fmt.Sprintf("%s splits a Bill of %.2f by %d People.\nThe Amount you have to pay is %.2f", s.authorName, s.amt, s.divisor, amt)
-					msg := tgbotapi.NewMessage(splitter, responseText)
-					bot.Send(msg)
-				} else {
-					log.Printf("Unregistered Splitter (i guess unregistered while Split was still assembled: %d", splitter)
-				}
-			}
-		}
+func (s *Split)HasSplitter(userID *user.User) bool {
+    for _, splitter := range s.splitWith {
+        if splitter.ID == userID.ID {
+            return true
+        }
+    }
+    return false
+}
 
-	} else {
-		log.Println("Invalid Split Object")
-	}
+func (s *Split) HandleSplit(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+	// userID := update.Message.Chat.ID
+	// if isValidSplit(s) {
+	// 	// divisor := max(split.divisor, len(split.splitWith))
+ //        if s.simpleSplit {
+	// 		amt := s.amt / float64(s.divisor)
+	// 		responseText := fmt.Sprintf("Amount everyone has to Pay is: %.2f", amt)
+	// 		msg := tgbotapi.NewMessage(userID, responseText)
+	// 		bot.Send(msg)
+	// 	} else {
+	// 		// userName := getUserName(split.author)
+	//
+	// 		for _, splitter := range s.splitWith {
+	// 			// splitter_name, err := getUserName(splitter)
+	// 			if user.IsRegistered(splitter) {
+	// 				amt := s.amt / float64(len(s.splitWith))
+	// 				responseText := fmt.Sprintf("%s splits a Bill of %.2f by %d People.\nThe Amount you have to pay is %.2f", s.authorName, s.amt, s.divisor, amt)
+	// 				msg := tgbotapi.NewMessage(splitter, responseText)
+	// 				bot.Send(msg)
+	// 			} else {
+	// 				log.Printf("Unregistered Splitter (i guess unregistered while Split was still assembled: %d", splitter)
+	// 			}
+	// 		}
+	// 	}
+	//
+	// } else {
+	// 	log.Println("Invalid Split Object")
+	// }
 }
 

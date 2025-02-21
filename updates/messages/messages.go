@@ -4,7 +4,7 @@ import (
 	"log"
 
 	// "github.com/cerdelen/splitWithFriends/globals"
-	"github.com/cerdelen/splitWithFriends/split"
+	// "github.com/cerdelen/splitWithFriends/split"
 	"github.com/cerdelen/splitWithFriends/user"
 	"github.com/cerdelen/splitWithFriends/user/userstates"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
@@ -16,7 +16,7 @@ func HandleMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 
     switch user.Users[userID].State {
         case userstates.Awaiting_amount_to_split:
-            split.CurrentSplits[userID].HandleSplit(bot, update)
+            // split.CurrentSplits[userID].HandleSplit(bot, update)
 			// split.HandleSplit(bot, update, globals.
         case userstates.Awaiting_for_split_by_amount:
         case userstates.Awaiting_for_split_contacts:

@@ -8,6 +8,9 @@ import (
 	"strings"
 
 	// "github.com/cerdelen/splitWithFriends/globals"
+	// "github.com/cerdelen/splitWithFriends/user"
+	// "github.com/cerdelen/splitWithFriends/split"
+	// "github.com/cerdelen/splitWithFriends/user"
 	"github.com/cerdelen/splitWithFriends/user/userstates"
 )
 
@@ -18,7 +21,7 @@ type User struct {
     ID                      int64
     Name                    string
 	State                   userstates.UserState
-    Contacts                map[int64]struct{}
+    Contacts                []*User
     Retries                 int
     ContactIndexing         int
 }
@@ -61,23 +64,34 @@ func (u *User)RemoveRetries(userID int64) {
 }
 
 var RegisteredUsers []*User
+var ToSplitUsers = make(map[int64]*User)
 var Users = make(map[int64]*User)
 
 func (u *User)AddContact(other int64) error {
     if IsRegistered(other) {
-        u.Contacts[other] = struct{}{}
+        u.Contacts = append(u.Contacts, Users[other])
+        sortUserSliceByName(u.Contacts)
         return nil
     }
     return errors.New("User is not Registered to become a Contact!")
 }
 
 func (u *User)RemoveContact(other int64) {
-    delete(u.Contacts, other)
+    for i, c := range u.Contacts {
+        if c.ID == other {
+            u.Contacts = append(u.Contacts[:i], u.Contacts[i+1:]...)
+            break
+        }
+    }
 }
 
 func (u *User) HasContact(other int64) bool {
-    _, exists := u.Contacts[other]
-    return exists
+    for _, c := range u.Contacts {
+        if c.ID == other {
+            return true
+        }
+    }
+    return false
 }
 
 func GetId(userName string) (int64, error) {
@@ -102,8 +116,14 @@ func NameIsRegistered(userName string) bool {
 
 func AddIfNewUser(userID int64, name string) {
     if _, ok := Users[userID]; !ok {
-        Users[userID] = &User{ID: userID, Name: name, State: userstates.None, Contacts: make(map[int64]struct{})}
+        Users[userID] = &User{ID: userID, Name: name, State: userstates.None}
     }
+}
+
+func sortUserSliceByName(slice []*User) {
+    sort.Slice(slice, func(i, j int) bool {
+        return strings.ToLower(slice[i].Name) < strings.ToLower(slice[j].Name)
+    })
 }
 
 func RegisterToBotMessages(userID int64) error {
@@ -112,9 +132,10 @@ func RegisterToBotMessages(userID int64) error {
     }
     RegisteredUsers = append(RegisteredUsers, Users[userID])
 
-    sort.Slice(RegisteredUsers, func(i, j int) bool {
-        return strings.ToLower(RegisteredUsers[i].Name) < strings.ToLower(RegisteredUsers[j].Name)
-    })
+    sortUserSliceByName(RegisteredUsers)
+    // sort.Slice(RegisteredUsers, func(i, j int) bool {
+    //     return strings.ToLower(RegisteredUsers[i].Name) < strings.ToLower(RegisteredUsers[j].Name)
+    // })
     return nil
 }
 

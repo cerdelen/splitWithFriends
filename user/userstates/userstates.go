@@ -5,10 +5,15 @@ type UserState int
 const (
     None                            UserState = iota
     Start                           UserState = iota
+
     Configuration                   UserState = iota
+    NewSplit                        UserState = iota
+    DirectRequest                   UserState = iota
 
     AddingContact                   UserState = iota
     RemovingContact                 UserState = iota
+
+    AddContactsToSplit              UserState = iota
 
 
 
