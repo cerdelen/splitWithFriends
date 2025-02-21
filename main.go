@@ -4,7 +4,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/cerdelen/splitWithFriends/globals"
+	// "github.com/cerdelen/splitWithFriends/globals"
 	"github.com/cerdelen/splitWithFriends/keyboards"
 	"github.com/cerdelen/splitWithFriends/updates/callbacks"
 	"github.com/cerdelen/splitWithFriends/updates/messages"
@@ -16,34 +16,10 @@ import (
 )
 
 
-const MAXRETRIES = 3
 
 type UserState struct {
 	State string
 }
-
-func checkRetryLeft(userID int64) int {
-	if retriesLeft, exists := globals.RetryCounter[userID]; exists {
-		retriesLeft -= 1
-		globals.RetryCounter[userID] = retriesLeft
-		return retriesLeft
-	}
-	globals.RetryCounter[userID] = MAXRETRIES
-	return MAXRETRIES
-}
-
-func removeRetries(userID int64) {
-	delete(globals.RetryCounter, userID)
-}
-
-// func checkUserNameExists(userName string) bool {
-// 	for _, v := range globals.RegisteredUsers {
-// 		if v == userName {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
 
 func returnHelpMessage (bot *tgbotapi.BotAPI, update tgbotapi.Update) {
     userID := update.Message.Chat.ID
@@ -87,7 +63,37 @@ func main() {
 
 	updates := bot.GetUpdatesChan(u)
 
+    user.AddIfNewUser(123, "123Name")
+    user.AddIfNewUser(321, "321Name")
+    user.AddIfNewUser(1234, "1234Name")
+    user.AddIfNewUser(4321, "4321Name")
+    user.AddIfNewUser(12345, "12345Name")
+    user.AddIfNewUser(54321, "54321Name")
+    user.AddIfNewUser(123456, "123456Name")
+    user.AddIfNewUser(654321, "654321Name")
+    user.AddIfNewUser(1234567, "1234567Name")
+    user.AddIfNewUser(7654321, "7654321Name")
+    user.AddIfNewUser(12345678, "12345678Name")
+    user.AddIfNewUser(87654321, "87654321Name")
+    user.RegisterToBotMessages(321)
+    user.RegisterToBotMessages(4321)
+    user.RegisterToBotMessages(54321)
+    user.RegisterToBotMessages(654321)
+    user.RegisterToBotMessages(7654321)
+    user.RegisterToBotMessages(87654321)
+
+    user.AddIfNewUser(1233, "BBC")
+    user.RegisterToBotMessages(1233)
+    user.AddIfNewUser(12334, "CBC")
+    user.RegisterToBotMessages(12334)
+
+    user.AddIfNewUser(54362, "abc")
+    user.RegisterToBotMessages(54362)
+    user.AddIfNewUser(123, "ABC")
+    user.RegisterToBotMessages(123)
+
 	for update := range updates {
+        log.Println("")
 		log.Printf("Received update: %+v", update)
         if update.CallbackQuery != nil {
             callbacks.HandleCallBackQueries(bot, update)

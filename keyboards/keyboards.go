@@ -5,7 +5,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/cerdelen/splitWithFriends/globals"
+	// "github.com/cerdelen/splitWithFriends/globals"
 	"github.com/cerdelen/splitWithFriends/user"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
@@ -60,7 +60,7 @@ var ConfigurationKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 func BuildSplitContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
 	var keyboardRows [][]tgbotapi.InlineKeyboardButton
 
-	for contactID := range globals.RegisteredUsers {
+	for _, registeredUser := range user.RegisteredUsers {
         if len(keyboardRows) == 5 {
             row := tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
@@ -68,12 +68,12 @@ func BuildSplitContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, err
             keyboardRows = append(keyboardRows, row)
             break
         }
-        if contactID != userID {
-            userName, err := user.GetUserName(contactID)
-            if err != nil { log.Fatalf("Couldnt retrieve Username for %d\nMap of Users %+v", contactID, user.Users)}
+        if registeredUser.ID != userID {
+            userName, err := user.GetUserName(registeredUser.ID)
+            if err != nil { log.Fatalf("Couldnt retrieve Username for %d\nMap of Users %+v", registeredUser.ID, user.Users)}
 
             row := tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData(userName, strconv.FormatInt(contactID, 10)),
+                tgbotapi.NewInlineKeyboardButtonData(userName, strconv.FormatInt(registeredUser.ID, 10)),
             )
 
             keyboardRows = append(keyboardRows, row)
@@ -96,41 +96,8 @@ func BuildSplitContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, err
 }
 
 func BuildAddingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
-	var keyboardRows [][]tgbotapi.InlineKeyboardButton
-    for registeredUser := range globals.RegisteredUsers {
-        if len(keyboardRows) == 5 {
-            row := tgbotapi.NewInlineKeyboardRow(
-                tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
-            )
-            keyboardRows = append(keyboardRows, row)
-            break
-        }
-        if !user.Users[userID].HasContact(registeredUser) {
-            if name, err := user.GetUserName(registeredUser); err != nil {
-                row := tgbotapi.NewInlineKeyboardRow(
-                    tgbotapi.NewInlineKeyboardButtonData(name, strconv.FormatInt(registeredUser, 10)),
-                )
-                keyboardRows = append(keyboardRows, row)
-            } else {
-                log.Panicf("GetUserName failed on a not Added Contact but Registered User\nRegistered User: %d", registeredUser)
-            }
-
-        }
-    }
-
-    if len(keyboardRows) == 0 {
-        row := tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("No Users addable!", "finished_selecting_contacts"),
-        )
-        keyboardRows = append(keyboardRows, row)
-    } else {
-        row := tgbotapi.NewInlineKeyboardRow(
-            tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
-        )
-        keyboardRows = append(keyboardRows, row)
-    }
-
-	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
+    possibleContacts := user.Users[userID].GetPossibleContacts()
+    return BuildingContactKeyboard(possibleContacts, user.Users[userID].ContactIndexing)
 }
 
 func BuildRemovingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
@@ -144,12 +111,13 @@ func BuildRemovingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup,
             break
         }
         if name, err := user.GetUserName(contact); err != nil {
+            log.Panicf("GetUserName failed on an Added Contact but Registered User\nRegistered User: %d", contact)
+
+        } else {
             row := tgbotapi.NewInlineKeyboardRow(
                 tgbotapi.NewInlineKeyboardButtonData(name, strconv.FormatInt(contact, 10)),
-            )
+                )
             keyboardRows = append(keyboardRows, row)
-        } else {
-            log.Panicf("GetUserName failed on an Added Contact but Registered User\nRegistered User: %d", contact)
         }
     }
 
@@ -167,3 +135,49 @@ func BuildRemovingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup,
 
 	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
 }
+
+func BuildingContactKeyboard(contacts []*user.User, skip int) (tgbotapi.InlineKeyboardMarkup, error) {
+	var keyboardRows [][]tgbotapi.InlineKeyboardButton
+    log.Printf("BuildingCotnactKeyboard: %d", len(contacts))
+
+    i := 0
+    if skip > 0 {
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("Load previous Contacts", "load_prev_contacts"),
+        )
+        keyboardRows = append(keyboardRows, row)
+    }
+    for _, contact := range contacts {
+        if i < skip {
+            i++
+            continue
+        }
+        if len(keyboardRows) == 5 && len(contacts) > 5 {
+            log.Println("HALLOOOOOOOO")
+            row := tgbotapi.NewInlineKeyboardRow(
+                tgbotapi.NewInlineKeyboardButtonData("Load more", "load_more_contacts"),
+            )
+            keyboardRows = append(keyboardRows, row)
+            break
+        }
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData(contact.Name, strconv.FormatInt(contact.ID, 10)),
+            )
+        keyboardRows = append(keyboardRows, row)
+    }
+
+    if len(keyboardRows) == 0 {
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("No Contacts!", "finished_selecting_contacts"),
+        )
+        keyboardRows = append(keyboardRows, row)
+    } else {
+        row := tgbotapi.NewInlineKeyboardRow(
+            tgbotapi.NewInlineKeyboardButtonData("That was all!", "finished_selecting_contacts"),
+        )
+        keyboardRows = append(keyboardRows, row)
+    }
+
+	return tgbotapi.NewInlineKeyboardMarkup(keyboardRows...), nil
+}
+
