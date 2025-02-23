@@ -27,7 +27,6 @@ var StartKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 var NewSplitKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Split with Contacts", "split_with_contacts"),
-		tgbotapi.NewInlineKeyboardButtonData("Simple Split", "simple_split"),
 	),
 )
 
@@ -56,6 +55,9 @@ var ConfigurationKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	),
 	tgbotapi.NewInlineKeyboardRow(
 		tgbotapi.NewInlineKeyboardButtonData("Remove Contact", "remove_contact"),
+	),
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("Change Currency", "currency_change"),
 	),
 )
 
@@ -111,7 +113,7 @@ func BuildAddSplitterKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, err
         user.Users[userID].ContactIndexing = utils.Min(user.Users[userID].ContactIndexing, len(filteredContacts) - ContactKeyboardContactFields)
     }
 
-    return BuildingContactKeyboard(filteredContacts, user.Users[userID].ContactIndexing)
+    return buildingContactKeyboard(filteredContacts, user.Users[userID].ContactIndexing)
 }
 
 func BuildAddingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
@@ -120,7 +122,7 @@ func BuildAddingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, e
         user.Users[userID].ContactIndexing = utils.Min(user.Users[userID].ContactIndexing, len(possibleContacts) - ContactKeyboardContactFields)
     }
 
-    return BuildingContactKeyboard(possibleContacts, user.Users[userID].ContactIndexing)
+    return buildingContactKeyboard(possibleContacts, user.Users[userID].ContactIndexing)
 }
 
 func BuildRemovingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
@@ -129,10 +131,19 @@ func BuildRemovingContactKeyboard (userID int64) (tgbotapi.InlineKeyboardMarkup,
         user.Users[userID].ContactIndexing = utils.Min(user.Users[userID].ContactIndexing, len(contacts) - ContactKeyboardContactFields)
     }
 
-    return BuildingContactKeyboard(contacts, user.Users[userID].ContactIndexing)
+    return buildingContactKeyboard(contacts, user.Users[userID].ContactIndexing)
 }
 
-func BuildingContactKeyboard(contacts []*user.User, skip int) (tgbotapi.InlineKeyboardMarkup, error) {
+func BuildContactKeyboard(userID int64) (tgbotapi.InlineKeyboardMarkup, error) {
+    contacts := user.Users[userID].Contacts
+    if len(contacts) > ContactKeyboardContactFields {
+        user.Users[userID].ContactIndexing = utils.Min(user.Users[userID].ContactIndexing, len(contacts) - ContactKeyboardContactFields)
+    }
+
+    return buildingContactKeyboard(contacts, user.Users[userID].ContactIndexing)
+}
+
+func buildingContactKeyboard(contacts []*user.User, skip int) (tgbotapi.InlineKeyboardMarkup, error) {
 	var keyboardRows [][]tgbotapi.InlineKeyboardButton
     log.Printf("BuildingCotnactKeyboard: %d", len(contacts))
 

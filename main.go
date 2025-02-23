@@ -4,7 +4,6 @@ import (
 	"log"
 	"os"
 
-	// "github.com/cerdelen/splitWithFriends/globals"
 	"github.com/cerdelen/splitWithFriends/keyboards"
 	"github.com/cerdelen/splitWithFriends/updates/callbacks"
 	"github.com/cerdelen/splitWithFriends/updates/messages"

@@ -14,11 +14,12 @@ const (
     RemovingContact                 UserState = iota
 
     AddContactsToSplit              UserState = iota
+    AwaitingAmountDirectRequest     UserState = iota
 
 
 
 
-    RequestFromSingleContact        UserState = iota
+    NewDirectRequest                UserState = iota
 
     Awaiting_amount_to_split        UserState = iota
     Awaiting_new_contact_name       UserState = iota
@@ -29,5 +30,5 @@ const (
 
 // String method for better printing
 func (s UserState) String() string {
-	return [...]string{"None", "Start", "awaiting_amount_to_split", "awaiting_new_contact_name", "waiting_for_split_contacts"} [s]
+    return [...]string{"None", "Start", "Configuration", "NewSplit", "DirectRequest", "AddingContact", "RemovingContact", "AddContactsToSplit", "AwaitingAmountDirectRequest", "NewDirectRequest", "Awaiting_amount_to_split", "Awaiting_new_contact_name", "Awaiting_for_split_contacts", "Awaiting_for_split_by_amount"} [s]
 }

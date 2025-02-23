@@ -33,7 +33,7 @@ func HandleMessage(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
             // delete(userStates, userID)
         case userstates.Configuration:
         case userstates.None:
-        case userstates.RequestFromSingleContact:
+        case userstates.NewDirectRequest:
         case userstates.Start:
         default:
             log.Panicf("unexpected userstates.UserState to receive a Message\nState: %s", user.Users[userID].State)

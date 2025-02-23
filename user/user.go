@@ -17,6 +17,18 @@ import (
 const MAXRETRIES = 3
 const RETRIESUNINIT = -12
 
+
+type Currency int
+
+const (
+    Dollar                              Currency = iota
+    Euro                                Currency = iota
+)
+
+func (s Currency) String() string {
+	return [...]string{"Dollar ($)", "Euro (€)"} [s]
+}
+
 type User struct {
     ID                      int64
     Name                    string
@@ -24,6 +36,7 @@ type User struct {
     Contacts                []*User
     Retries                 int
     ContactIndexing         int
+    Currency                Currency
 }
 
 func (u *User)CheckRetryLeft() int {
@@ -74,6 +87,14 @@ func (u *User)AddContact(other int64) error {
         return nil
     }
     return errors.New("User is not Registered to become a Contact!")
+}
+
+func (u *User)ChangeCurrency() string {
+    u.Currency--
+    if u.Currency < 0 {
+        u.Currency = Euro
+    }
+    return u.Currency.String()
 }
 
 func (u *User)RemoveContact(other int64) {

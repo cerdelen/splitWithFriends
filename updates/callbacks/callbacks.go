@@ -1,6 +1,7 @@
 package callbacks
 
 import (
+	"errors"
 	"log"
 	"strconv"
 
@@ -19,6 +20,7 @@ func parseSplitByAmount(update tgbotapi.Update) (string, tgbotapi.InlineKeyboard
 	userID := update.CallbackQuery.Message.Chat.ID
 	var responseText string
 	var split_by int
+	var err error = nil
 	switch callbackData {
 	case "split_by_2":
 		split_by = 2
@@ -44,7 +46,40 @@ func parseSplitByAmount(update tgbotapi.Update) (string, tgbotapi.InlineKeyboard
 		responseText = "Please enter by how many you want to Split instead?"
 		// userStates[userID] = UserState{State: "awaiting_amount_to_split"}
 	}
-	return responseText, tgbotapi.NewInlineKeyboardMarkup(), nil
+	return responseText, tgbotapi.NewInlineKeyboardMarkup(), err
+}
+
+func parseRequestFromSingleUser (update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
+	callbackData := update.CallbackQuery.Data
+	userID := update.CallbackQuery.Message.Chat.ID
+	var responseText string
+	var keyboard tgbotapi.InlineKeyboardMarkup
+	var err error = nil
+	switch callbackData {
+    case "load_prev_contacts":
+		user.Users[userID].ContactIndexing -= 4
+		keyboard, err = keyboards.BuildContactKeyboard(userID)
+        responseText = "What User do you want to send a Request"
+	case "load_more_contacts":
+		user.Users[userID].ContactIndexing += 4
+		keyboard, err = keyboards.BuildContactKeyboard(userID)
+        responseText = "What User do you want to send a Request"
+	case "finished_selecting_contacts":
+		user.Users[userID].State = userstates.None
+		responseText = "Canceled Request"
+	default:
+		var otherId int
+		if otherId, err = strconv.Atoi(callbackData); err == nil {
+            if !user.Users[userID].HasContact(int64(otherId)) {
+                err = errors.New("User is not a Contact")
+            } else {
+                me := user.Users[userID]
+                recipient := user.Users[int64(otherId)]
+                split.CurrentDirectRequests[userID] = split.DirectRequestsInit(me, recipient)
+            }
+        }
+    }
+	return responseText, keyboard, err
 }
 
 func parseStartCallBack(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
@@ -53,6 +88,7 @@ func parseStartCallBack(update tgbotapi.Update) (string, tgbotapi.InlineKeyboard
 	userID := update.CallbackQuery.Message.Chat.ID
 	var responseText string
 	var keyboard tgbotapi.InlineKeyboardMarkup
+	var err error = nil
 	switch callbackData {
 	case "configuration":
 		user.Users[userID].State = userstates.Configuration
@@ -63,14 +99,15 @@ func parseStartCallBack(update tgbotapi.Update) (string, tgbotapi.InlineKeyboard
 		responseText = "New Split"
 		keyboard = keyboards.NewSplitKeyboard
 	case "direct_request":
-		// case "simple_split":
-		//     user.Users[userID].State = userstates.Awaiting_for_split_by_amount
-		//     // userStates[userID] = UserState{State: "waiting_for_split_by_amount"}
-		//     msg := tgbotapi.NewMessage(chatID, "By how many people do you want to split the Bill?")
-		//     msg.ReplyMarkup = keyboards.Split_by_amt_keyboard
-		//     bot.Send(msg)
+		user.Users[userID].State = userstates.NewDirectRequest
+        if keyboard, err = keyboards.BuildContactKeyboard(userID); err != nil {
+            log.Println(err.Error())
+            responseText = "Error Parsing Contact Keyboard for direct request"
+        } else {
+            responseText = "Direct Request"
+        }
 	}
-	return responseText, keyboard, nil
+	return responseText, keyboard, err
 }
 
 func parseNewSplit(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarkup, error) {
@@ -90,7 +127,8 @@ func parseNewSplit(update tgbotapi.Update) (string, tgbotapi.InlineKeyboardMarku
             } else {
                 responseText = "What User do you want to add as a Contact?"
             }
-        case "simple_split":
+        default:
+            log.Fatalf("In parseNewSplit calbackdata is %s", callbackData)
     }
 	return responseText, keyboard, err
 }
@@ -112,6 +150,10 @@ func parseConfigurationCallBack(update tgbotapi.Update) (string, tgbotapi.Inline
 			responseText = "Successfully deregistered"
 			user.Users[userID].State = userstates.None
 		}
+	case "currency_change":
+		user.Users[userID].State = userstates.None
+        currency := user.Users[userID].ChangeCurrency()
+        responseText = "Changed Currency to " + currency
 	case "add_contact":
 		user.Users[userID].State = userstates.AddingContact
 		user.Users[userID].ContactIndexing = 0
@@ -142,8 +184,14 @@ func parseRemoveContact(update tgbotapi.Update) (string, tgbotapi.InlineKeyboard
 	var keyboard tgbotapi.InlineKeyboardMarkup
 	var err error
 	switch callbackData {
+    case "load_prev_contacts":
+		user.Users[userID].ContactIndexing -= 4
+		keyboard, err = keyboards.BuildRemovingContactKeyboard(userID)
+        responseText = "What User do you want to remove as a Contact?"
 	case "load_more_contacts":
-		// user.Users[userID].State = userstates.AddingContact
+		user.Users[userID].ContactIndexing += 4
+		keyboard, err = keyboards.BuildRemovingContactKeyboard(userID)
+        responseText = "What User do you want to remove as a Contact?"
 	case "finished_selecting_contacts":
 		user.Users[userID].State = userstates.None
 		responseText = "Finished Removing Contacts"
@@ -155,7 +203,7 @@ func parseRemoveContact(update tgbotapi.Update) (string, tgbotapi.InlineKeyboard
 				log.Println(err.Error())
 				responseText = "Error Parsing Contact Keyboard"
 			} else {
-				responseText = "What User do you want to add as a Contact?"
+				responseText = "What User do you want to remove as a Contact?"
 			}
 		}
 	}
@@ -262,7 +310,8 @@ func HandleCallBackQueries(bot *tgbotapi.BotAPI, update tgbotapi.Update) {
 		msg, keyboard, err = parseConfigurationCallBack(update)
     case userstates.RemovingContact:
         msg, keyboard, err = parseRemoveContact(update)
-	case userstates.RequestFromSingleContact:
+	case userstates.NewDirectRequest:
+        msg, keyboard, err = parseRequestFromSingleUser(update)
     case userstates.NewSplit:
         msg, keyboard, err = parseNewSplit(update)
     case userstates.DirectRequest:

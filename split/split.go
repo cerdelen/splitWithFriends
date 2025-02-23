@@ -24,7 +24,18 @@ type Split struct {
     // simpleSplit     bool
 }
 
+type DirectRequest struct {
+	author          *user.User
+    recipient       *user.User
+	amt             float64
+}
+
 var CurrentSplits = make(map[int64]*Split)
+var CurrentDirectRequests = make(map[int64]*DirectRequest)
+
+func DirectRequestsInit(author *user.User, recipient *user.User) *DirectRequest {
+    return &DirectRequest{author: author, recipient: recipient}
+}
 
 func (s *Split)isValidSplit() bool {
 	if s.divisor > 0 && s.amt > 0 {
