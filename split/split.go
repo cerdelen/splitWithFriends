@@ -1,18 +1,15 @@
 package split
 
 import (
-	// "fmt"
-	// "log"
+	"fmt"
 	"errors"
-	// "log"
+	"log"
 	"regexp"
 
-	// "strconv"
-
-	// "github.com/cerdelen/splitWithFriends/globals"
 	"github.com/cerdelen/splitWithFriends/user"
 
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+    botWrap "github.com/cerdelen/splitWithFriends/bot"
 )
 
 type Split struct {
@@ -27,14 +24,29 @@ type Split struct {
 type DirectRequest struct {
 	author          *user.User
     recipient       *user.User
-	amt             float64
 }
 
 var CurrentSplits = make(map[int64]*Split)
 var CurrentDirectRequests = make(map[int64]*DirectRequest)
 
-func DirectRequestsInit(author *user.User, recipient *user.User) *DirectRequest {
-    return &DirectRequest{author: author, recipient: recipient}
+func (r *DirectRequest)ResolveRequest(amt float64) (string, error) {
+    var err error = nil
+    var text string = ""
+    log.Printf("Looking for %d", r.recipient.ID)
+    if user.IsRegistered(r.recipient.ID) {
+        responseText := fmt.Sprintf("%s has requested %.2f %s from you!", r.author.Name, amt, r.author.Currency)
+        msg := tgbotapi.NewMessage(r.recipient.ID, responseText)
+        botWrap.SendMessage(msg)
+        text = fmt.Sprintf("You have requested %.2f %s from %s!", amt, r.author.Currency, r.recipient.Name)
+    } else {
+        log.Printf("Unregistered Splitter (i guess unregistered while Split was still assembled: %s", r.recipient.Name)
+        err = errors.New("Recipient is not Registered")
+    }
+    return text, err
+}
+
+func DirectRequestsInit(author *user.User, recipient *user.User) {
+    CurrentDirectRequests[author.ID] = &DirectRequest{author: author, recipient: recipient}
 }
 
 func (s *Split)isValidSplit() bool {
@@ -48,7 +60,7 @@ func Init(author *user.User) *Split {
     return &Split{author: author}
 }
 
-func isValidPositiveNumber(s string) bool {
+func IsValidAmt(s string) bool {
 	re := regexp.MustCompile(`^[0-9]+(\.[0-9]{1,2})?$`)
 	return re.MatchString(s)
 }

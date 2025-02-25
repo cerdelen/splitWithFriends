@@ -10,16 +10,24 @@ const (
     NewSplit                        UserState = iota
     DirectRequest                   UserState = iota
 
+    // Configuration
     AddingContact                   UserState = iota
     RemovingContact                 UserState = iota
 
+    // New Split
     AddContactsToSplit              UserState = iota
+
+    // DirectRequest
+    NewDirectRequest                UserState = iota
     AwaitingAmountDirectRequest     UserState = iota
 
 
 
 
-    NewDirectRequest                UserState = iota
+
+
+
+
 
     Awaiting_amount_to_split        UserState = iota
     Awaiting_new_contact_name       UserState = iota

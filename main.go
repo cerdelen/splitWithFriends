@@ -10,20 +10,22 @@ import (
 	"github.com/cerdelen/splitWithFriends/user"
 	"github.com/cerdelen/splitWithFriends/user/userstates"
 
+	botWrap "github.com/cerdelen/splitWithFriends/bot"
+
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/joho/godotenv"
 )
 
-
+// var botWrap.Bot *tgbotapi.BotAPI
 
 type UserState struct {
 	State string
 }
 
-func returnHelpMessage (bot *tgbotapi.BotAPI, update tgbotapi.Update) {
+func returnHelpMessage (update tgbotapi.Update) {
     userID := update.Message.Chat.ID
-    msg := tgbotapi.NewMessage(userID, "Start the Bot by sending \"/start\" and follow the instructions!")
-    bot.Send(msg)
+    msg := tgbotapi.NewMessage(userID, "Start the botWrap.Bot by sending \"/start\" and follow the instructions!")
+    botWrap.Bot.Send(msg)
 }
 
 func main() {
@@ -37,30 +39,30 @@ func main() {
 		log.Fatal("TELEGRAM_BOT_TOKEN not set")
 	}
 
-	bot, err := tgbotapi.NewBotAPI(botToken)
+	botWrap.Bot, err = tgbotapi.NewBotAPI(botToken)
 
 	if err != nil {
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	botWrap.Bot.Debug = true
 
-	// botInfo, err := bot.GetMe()
+	// botInfo, err := botWrap.Bot.GetMe()
 	// if err != nil {
 	// 	log.Panic(err)
 	// }
-	// log.Printf("Bot Username: %s", botInfo.UserName)
+	// log.Printf("botWrap.Bot Username: %s", botInfo.UserName)
 	// log.Printf("Can Join Groups: %v", botInfo.CanJoinGroups)
 	// log.Printf("Can Read Messages: %v", botInfo.CanReadAllGroupMessages)
 	// log.Printf("Supports Inline Queries: %v", botInfo.SupportsInlineQueries)
 
-	log.Printf("Authorized on account %s", bot.Self.UserName)
+	log.Printf("Authorized on account %s", botWrap.Bot.Self.UserName)
 
 	u := tgbotapi.NewUpdate(0)
 	u.AllowedUpdates = []string{"message", "edited_channel_post", "callback_query"}
 	u.Timeout = 60
 
-	updates := bot.GetUpdatesChan(u)
+	updates := botWrap.Bot.GetUpdatesChan(u)
 
     user.AddIfNewUser(123, "123Name")
     user.AddIfNewUser(321, "321Name")
@@ -91,11 +93,17 @@ func main() {
     user.AddIfNewUser(123, "ABC")
     user.RegisterToBotMessages(123)
 
+
+    var meID int64 = 476541234
+    user.AddIfNewUser(meID, "Cerdelen")
+    user.RegisterToBotMessages(meID)
+
+
 	for update := range updates {
         log.Println("")
 		log.Printf("Received update: %+v", update)
         if update.CallbackQuery != nil {
-            callbacks.HandleCallBackQueries(bot, update)
+            callbacks.HandleCallBackQueries(botWrap.Bot, update)
         } else if update.Message != nil {
             userID := update.Message.Chat.ID
             user.AddIfNewUser(userID, update.Message.Chat.UserName)
@@ -106,12 +114,12 @@ func main() {
                             user.Users[userID].State = userstates.Start
                             msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Click a button:")
                             msg.ReplyMarkup = keyboards.StartKeyboard
-                            bot.Send(msg)
+                            botWrap.Bot.Send(msg)
                         default:
-                            returnHelpMessage(bot, update)
+                            returnHelpMessage(update)
                     }
                 default:
-                    messages.HandleMessage(bot, update)
+                    messages.HandleMessage(botWrap.Bot, update)
             }
 		}
 	}

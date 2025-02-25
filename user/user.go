@@ -26,6 +26,10 @@ const (
 )
 
 func (s Currency) String() string {
+	return [...]string{"$", "€"} [s]
+}
+
+func (s Currency) ExplicitString() string {
 	return [...]string{"Dollar ($)", "Euro (€)"} [s]
 }
 
@@ -94,7 +98,7 @@ func (u *User)ChangeCurrency() string {
     if u.Currency < 0 {
         u.Currency = Euro
     }
-    return u.Currency.String()
+    return u.Currency.ExplicitString()
 }
 
 func (u *User)RemoveContact(other int64) {
